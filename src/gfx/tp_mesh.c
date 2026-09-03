@@ -261,3 +261,94 @@ tp_result tp_mesh_make_grid(tp_mesh *m, f32 extent, int divisions)
     tp_free(idx);
     return res;
 }
+
+tp_result tp_mesh_make_bone_chain(tp_mesh *m, f32 radius, f32 length,
+                                  int segments, int sides, int bones)
+{
+    segments = TP_CLAMP(segments, 2, 128);
+    sides    = TP_CLAMP(sides, 3, 64);
+    bones    = TP_CLAMP(bones, 1, TP_MAX_BONES);
+
+    const int vcount = (segments + 1) * (sides + 1);
+    const int icount = segments * sides * 6;
+    if (vcount > 65536)
+        return TP_FAIL(TP_ERR_ARGS, "bone chain too dense for u16 indices");
+
+    tp_vertex *verts = (tp_vertex *)tp_alloc((size_t)vcount * sizeof(tp_vertex));
+    u16 *idx = (u16 *)tp_alloc((size_t)icount * sizeof(u16));
+    if (!verts || !idx) { tp_free(verts); tp_free(idx); return TP_ERR_NOMEM; }
+
+    const f32 seg_per_bone = (f32)segments / (f32)bones;
+
+    int vi = 0;
+    for (int s = 0; s <= segments; ++s) {
+        f32 t = (f32)s / (f32)segments;      /* 0..1 along the tube        */
+        f32 y = t * length;
+
+        /* Taper the ends so it reads as a limb rather than a pipe. */
+        f32 taper = sinf(TP_CLAMP(t, 0.0f, 1.0f) * TP_PI);
+        f32 r = radius * (0.35f + 0.65f * taper);
+
+        /* Which two bones influence this ring, and how much of each. The
+         * float position along the chain gives the lower bone directly; the
+         * fraction feathers into the next one. A hard assignment here would
+         * crease visibly at every joint. */
+        f32 bone_f = (f32)s / seg_per_bone;
+        int b0 = (int)bone_f;
+        if (b0 > bones - 1) b0 = bones - 1;
+        int b1 = TP_MIN(b0 + 1, bones - 1);
+        f32 frac = bone_f - (f32)b0;
+        /* Smoothstep the blend so the influence ramp has no kink. */
+        f32 w1 = frac * frac * (3.0f - 2.0f * frac);
+        f32 w0 = 1.0f - w1;
+
+        for (int k = 0; k <= sides; ++k) {
+            f32 u = (f32)k / (f32)sides;
+            f32 a = u * TP_TAU;
+            f32 ca = cosf(a), sa = sinf(a);
+
+            tp_vertex *v = &verts[vi++];
+            v->position[0] = ca * r;
+            v->position[1] = y;
+            v->position[2] = sa * r;
+
+            tp_vertex_set_normal(v, tp_v3_norm(tp_v3(ca, 0.0f, sa)));
+            tp_vertex_set_tangent(v, tp_v3(-sa, 0.0f, ca), 1.0f);
+            tp_vertex_set_uv(v, u, t);
+
+            v->joints[0]  = (u8)b0;
+            v->joints[1]  = (u8)b1;
+            v->joints[2]  = 0;
+            v->joints[3]  = 0;
+            v->weights[0] = tp_pack_unorm8(w0);
+            v->weights[1] = tp_pack_unorm8(w1);
+            v->weights[2] = 0;
+            v->weights[3] = 0;
+
+            /* unorm8 rounding can leave the pair summing to 254 or 256; the
+             * shader assumes they sum to 1, so fix it up on the dominant
+             * channel rather than letting the mesh shrink or swell. */
+            int sum = (int)v->weights[0] + (int)v->weights[1];
+            if (sum != 255) {
+                int dom = (v->weights[0] >= v->weights[1]) ? 0 : 1;
+                int fixed = (int)v->weights[dom] + (255 - sum);
+                v->weights[dom] = (u8)TP_CLAMP(fixed, 0, 255);
+            }
+        }
+    }
+
+    int ii = 0;
+    for (int s = 0; s < segments; ++s) {
+        for (int k = 0; k < sides; ++k) {
+            u16 a = (u16)(s * (sides + 1) + k);
+            u16 b = (u16)(a + sides + 1);
+            idx[ii++] = a; idx[ii++] = b;            idx[ii++] = (u16)(a + 1);
+            idx[ii++] = b; idx[ii++] = (u16)(b + 1); idx[ii++] = (u16)(a + 1);
+        }
+    }
+
+    tp_result res = tp_mesh_create(m, "bone-chain", verts, vi, idx, ii);
+    tp_free(verts);
+    tp_free(idx);
+    return res;
+}

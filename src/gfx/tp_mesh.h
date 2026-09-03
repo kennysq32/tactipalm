@@ -124,4 +124,14 @@ tp_result tp_mesh_make_cube(tp_mesh *m, f32 size);
 tp_result tp_mesh_make_grid(tp_mesh *m, f32 extent, int divisions);
 tp_result tp_mesh_make_uv_sphere(tp_mesh *m, f32 radius, int rings, int sectors);
 
+/* A tube along +Y, segmented and weighted across `bones` joints laid end to
+ * end. Unlike the primitives above this one is genuinely *skinned*, so it
+ * exercises the whole path the real character will use — quantised joint
+ * indices and weights in the vertex buffer, a bone palette in a UBO, and the
+ * matrix blend in the vertex shader — with no asset pipeline in front of it.
+ * Bone i covers the slab of the tube from i/bones to (i+1)/bones of its
+ * length, with the weights feathered across the boundary. */
+tp_result tp_mesh_make_bone_chain(tp_mesh *m, f32 radius, f32 length,
+                                  int segments, int sides, int bones);
+
 #endif /* TP_MESH_H */
