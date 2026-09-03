@@ -1,0 +1,16 @@
+# Build trees and downloads. These are large and reproducible.
+image/work/
+image/out/
+image/kernel/work/
+image/kernel/out/
+
+# Artifacts
+*.img
+*.img.xz
+*.tar.gz
+*.tar.xz
+*.core
+
+# Editor
+*.swp
+.vscode/

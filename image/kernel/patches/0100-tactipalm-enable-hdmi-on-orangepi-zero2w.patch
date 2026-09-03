@@ -1,0 +1,73 @@
+From: Tactipalm <local>
+Subject: [PATCH] arm64: dts: allwinner: h618: enable display on OrangePi Zero 2W
+
+Armbian's sunxi-6.18 patches.drm series adds the DE33 display pipeline to the
+H616/H618 SoC, but its board-enablement patch (0042) does not cover the
+OrangePi Zero 2W.
+
+The sibling boards get their enablement in two places. The Zero 2 and Zero 3
+board files only add &hdmi, because they include sun50i-h616-orangepi-zero.dtsi
+which supplies the connector node, &de and &hdmi_out. The Zero 2W includes
+sun50i-h616.dtsi directly, so it inherits none of that and needs all four
+pieces here:
+
+  - an hdmi-connector node with an endpoint
+  - &de status okay          (display-engine defaults to disabled in the dtsi)
+  - &hdmi with its supply    (aldo1 is vcc1v8, as on the Zero 3)
+  - &hdmi_out endpoint       (links the encoder to the connector)
+
+Enabling &hdmi alone is not enough: the display-engine node stays disabled, so
+sun4i-drm never binds and no DRM device appears.
+
+The connector is typed "c" (mini-HDMI) rather than the "d" (micro-HDMI) used by
+the Zero 2/Zero 3 dtsi, matching the socket actually fitted to this board.
+
+--- a/arch/arm64/boot/dts/allwinner/sun50i-h618-orangepi-zero2w.dts
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h618-orangepi-zero2w.dts
+@@ -24,6 +24,17 @@
+ 		stdout-path = "serial0:115200n8";
+ 	};
+ 
++	connector {
++		compatible = "hdmi-connector";
++		type = "c";		/* the Zero 2W carries a mini-HDMI socket */
++
++		port {
++			hdmi_con_in: endpoint {
++				remote-endpoint = <&hdmi_out_con>;
++			};
++		};
++	};
++
+ 	leds {
+ 		compatible = "gpio-leds";
+ 
+@@ -63,6 +74,10 @@
+ 	cpu-supply = <&reg_dcdc2>;
+ };
+ 
++&de {
++	status = "okay";
++};
++
+ &ehci1 {
+ 	status = "okay";
+ };
+@@ -74,6 +89,17 @@
+ 	status = "okay";
+ };
+ 
++&hdmi {
++	hvcc-supply = <&reg_aldo1>;
++	status = "okay";
++};
++
++&hdmi_out {
++	hdmi_out_con: endpoint {
++		remote-endpoint = <&hdmi_con_in>;
++	};
++};
++
+ &mmc0 {
+ 	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>;	/* PF6 */
+ 	bus-width = <4>;

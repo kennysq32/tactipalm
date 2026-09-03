@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Assemble a flashable Arch Linux ARM image for the Orange Pi Zero 2W.
+#
+# Inputs (build these first):
+#   ./build-uboot.sh          -> out/u-boot-sunxi-with-spl.bin
+#   ./kernel/build-cross.sh   -> kernel/out/{Image,*.dtb,modules-*.tar.gz}
+#
+# Needs root for loop devices and mount.
+#   sudo apt install parted e2fsprogs libarchive-tools curl
+set -euo pipefail
+
+IMG_SIZE="${IMG_SIZE:-3G}"
+KVER="${KVER:-6.18.49}"
+ALARM_URL="http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
+LABEL="TACTIPALM"
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+WORK="${WORK:-${HERE}/work}"
+OUT="${HERE}/out"
+IMG="${OUT}/tactipalm-$(date +%Y%m%d).img"
+MNT="${WORK}/mnt"
+
+[ "$(id -u)" -eq 0 ] || { echo "run me with sudo"; exit 1; }
+
+UBOOT="${OUT}/u-boot-sunxi-with-spl.bin"
+KIMAGE="${HERE}/kernel/out/Image"
+KDTB="${HERE}/kernel/out/sun50i-h618-orangepi-zero2w.dtb"
+KMODS="${HERE}/kernel/out/modules-${KVER}.tar.gz"
+for f in "$UBOOT" "$KIMAGE" "$KDTB" "$KMODS"; do
+  [ -f "$f" ] || { echo "missing: $f"; echo "build it first (see header)"; exit 1; }
+done
+
+mkdir -p "$WORK" "$OUT"
+
+# --- rootfs tarball (cached; ~"latest" is a moving target, so note the date) ---
+ROOTFS="${WORK}/ArchLinuxARM-aarch64-latest.tar.gz"
+[ -f "$ROOTFS" ] || { echo ":: fetching ALARM rootfs"; curl -fL# -o "$ROOTFS" "$ALARM_URL"; }
+
+# --- image + partition ------------------------------------------------------
+# Single ext4 starting at 1 MiB. sunxi SPL lives at 8 KiB, so the gap matters.
+echo ":: creating ${IMG_SIZE} image"
+rm -f "$IMG"; truncate -s "$IMG_SIZE" "$IMG"
+parted -s "$IMG" mklabel msdos
+parted -s "$IMG" mkpart primary ext4 1MiB 100%
+parted -s "$IMG" set 1 boot on
+
+LOOP="$(losetup --find --show --partscan "$IMG")"
+trap 'umount -R "$MNT" 2>/dev/null || true; losetup -d "$LOOP" 2>/dev/null || true' EXIT
+mkfs.ext4 -q -L "$LABEL" "${LOOP}p1"
+
+mkdir -p "$MNT"; mount "${LOOP}p1" "$MNT"
+
+echo ":: extracting rootfs"
+# bsdtar, not GNU tar: ALARM tarballs carry ownership/xattrs GNU tar mangles.
+bsdtar -xpf "$ROOTFS" -C "$MNT"
+
+echo ":: installing kernel ${KVER}"
+install -Dm644 "$KIMAGE" "${MNT}/boot/Image"
+install -Dm644 "$KDTB"   "${MNT}/boot/dtbs/allwinner/$(basename "$KDTB")"
+tar -C "$MNT" -xzf "$KMODS"
+
+echo ":: applying overlay"
+cp -a "${HERE}/overlay/." "$MNT/"
+
+echo ":: configuring"
+# ALARM ships a uboot-based fstab and a serial getty we do not want to fight.
+rm -f "${MNT}/boot/boot.scr" "${MNT}/boot/boot.txt" 2>/dev/null || true
+ln -sf /usr/lib/systemd/system/systemd-networkd.service \
+   "${MNT}/etc/systemd/system/multi-user.target.wants/systemd-networkd.service"
+ln -sf /usr/lib/systemd/system/sshd.service \
+   "${MNT}/etc/systemd/system/multi-user.target.wants/sshd.service"
+ln -sf /usr/lib/systemd/system/getty@.service \
+   "${MNT}/etc/systemd/system/getty.target.wants/getty@tty1.service"
+ln -sf /usr/lib/systemd/system/serial-getty@.service \
+   "${MNT}/etc/systemd/system/getty.target.wants/serial-getty@ttyS0.service"
+
+sync; umount -R "$MNT"; losetup -d "$LOOP"; trap - EXIT
+
+echo ":: writing U-Boot at 8 KiB offset"
+dd if="$UBOOT" of="$IMG" bs=1024 seek=8 conv=notrunc,fsync status=none
+
+echo
+echo "Image ready: $IMG  ($(du -h "$IMG" | cut -f1))"
+echo
+echo "Flash it:"
+echo "  sudo dd if=$IMG of=/dev/sdX bs=4M status=progress conv=fsync"
+echo
+echo "First boot: serial console on the GPIO header, 115200 8N1."
+echo "Default ALARM login is alarm/alarm, root/root. Change both."
+echo "Gadget network appears as usb0 at 10.42.0.2; give your host 10.42.0.1/24."

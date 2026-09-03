@@ -1,0 +1,75 @@
+# Maintainer: Tactipalm
+# Arch Linux ARM kernel for Orange Pi Zero 2W (Allwinner H618) with the
+# out-of-tree DE33 / H616 HDMI display stack vendored in from Armbian.
+#
+# Build natively on aarch64 (target board, ALARM chroot, or qemu-user chroot).
+# For fast iteration during Phase 0B bring-up use ../build-cross.sh instead —
+# it cross-compiles on an x86_64 host and skips packaging entirely.
+
+pkgbase=linux-tactipalm
+pkgver=6.18.49
+pkgrel=1
+_srcname=linux-${pkgver}
+arch=('aarch64')
+license=('GPL-2.0-only')
+url="https://github.com/armbian/build"
+makedepends=('bc' 'cpio' 'gettext' 'libelf' 'pahole' 'perl' 'python' 'tar' 'xz' 'kmod')
+options=('!strip')
+
+source=(
+  "https://cdn.kernel.org/pub/linux/kernel/v6.x/${_srcname}.tar.xz"
+  'config.fragment'
+  patches/*.patch
+)
+sha256sums=('SKIP' 'SKIP')   # regenerate with updpkgsums after pinning
+
+prepare() {
+  cd "${_srcname}"
+
+  echo ":: applying vendored patch series"
+  for p in "${srcdir}"/*.patch; do
+    echo "   $(basename "$p")"
+    patch -p1 --forward < "$p"
+  done
+
+  echo ":: generating config"
+  make ARCH=arm64 defconfig
+  ./scripts/kconfig/merge_config.sh -m -O . .config "${srcdir}/config.fragment"
+  make ARCH=arm64 olddefconfig
+
+  # Fail loudly rather than shipping a kernel that cannot drive the panel.
+  for sym in CONFIG_DRM_SUN4I CONFIG_DRM_SUN8I_MIXER CONFIG_DRM_SUN8I_DW_HDMI \
+             CONFIG_SUN50I_H6_PRCM_PPU CONFIG_SUNXI_SRAM \
+             CONFIG_DRM_SUN50I_PLANES; do
+    grep -q "^${sym}=[ym]" .config || { echo "MISSING: ${sym}"; exit 1; }
+  done
+
+  make -s kernelrelease > version
+  echo ":: kernel version $(<version)"
+}
+
+build() {
+  cd "${_srcname}"
+  make ARCH=arm64 Image modules dtbs
+}
+
+package() {
+  pkgdesc="Linux ${pkgver} for Orange Pi Zero 2W with H618 DE33/HDMI support"
+  depends=('coreutils' 'kmod' 'mkinitcpio')
+  provides=("linux=${pkgver}" WIREGUARD-MODULE)
+  replaces=('linux-aarch64')
+
+  cd "${_srcname}"
+  local kernver="$(<version)"
+  local modulesdir="${pkgdir}/usr/lib/modules/${kernver}"
+
+  install -Dm644 arch/arm64/boot/Image "${pkgdir}/boot/Image"
+  install -Dm644 arch/arm64/boot/dts/allwinner/sun50i-h618-orangepi-zero2w.dtb \
+    "${pkgdir}/boot/dtbs/allwinner/sun50i-h618-orangepi-zero2w.dtb"
+
+  ZSTD_CLEVEL=19 make ARCH=arm64 INSTALL_MOD_PATH="${pkgdir}/usr" \
+    INSTALL_MOD_STRIP=1 DEPMOD=/doesnt/exist modules_install
+  rm -f "${modulesdir}"/{source,build}
+
+  echo "${pkgbase}" | install -Dm644 /dev/stdin "${modulesdir}/pkgbase"
+}

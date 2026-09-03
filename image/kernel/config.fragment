@@ -1,0 +1,48 @@
+# Tactipalm — kernel config delta for Orange Pi Zero 2W (Allwinner H618)
+# Merge onto arm64 defconfig with scripts/kconfig/merge_config.sh
+
+CONFIG_ARCH_SUNXI=y
+CONFIG_SUN50I_H616_CCU=y
+CONFIG_SUNXI_SRAM=y
+
+# GPU power domain. Without this the Mali never powers on — the in-tree
+# help text says so verbatim: "required to enable the Mali GPU in the H616 SoC".
+CONFIG_SUN50I_H6_PRCM_PPU=y
+
+# Mali-G31 (Bifrost) via Panfrost. Already wired up in mainline DT.
+CONFIG_DRM=y
+CONFIG_DRM_PANFROST=m
+
+# DE33 display pipeline + HDMI. Everything here depends on the vendored
+# Armbian patch series; on stock 6.18 these symbols exist but produce no
+# H616 display output because the DT nodes and DE33 code are absent.
+CONFIG_DRM_SUN4I=y
+CONFIG_DRM_SUN8I_MIXER=y
+CONFIG_DRM_SUN8I_DW_HDMI=y
+CONFIG_DRM_SUN8I_TCON_TOP=y
+# CONFIG_DRM_SUN50I_PLANES is selected automatically by DRM_SUN8I_MIXER
+
+# Headless-friendly console + GBM scanout
+CONFIG_DRM_FBDEV_EMULATION=y
+CONFIG_FRAMEBUFFER_CONSOLE=y
+
+# Thermal (Phase 6 soak testing)
+CONFIG_SUN8I_THERMAL=y
+
+# --- USB gadget networking -------------------------------------------------
+# The USB-C port is fixed dr_mode="peripheral" in the mainline DTS, and the
+# board has no usable WiFi (see docs/OS-COMPATIBILITY.md). Gadget ethernet over
+# the power cable is the entire network stack for this appliance.
+CONFIG_USB_MUSB_HDRC=y
+CONFIG_USB_MUSB_SUNXI=y
+CONFIG_USB_MUSB_GADGET=y
+CONFIG_USB_GADGET=y
+CONFIG_USB_LIBCOMPOSITE=m
+CONFIG_USB_ETH=m
+CONFIG_USB_ETH_RNDIS=y
+
+# Serial console on the GPIO header (uart0) — the only channel that works
+# before gadget networking is up.
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_SERIAL_8250_DW=y
