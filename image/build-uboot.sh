@@ -33,6 +33,12 @@ BL31="${WORK}/trusted-firmware-a/build/${PLAT}/debug/bl31.bin"
 
 echo ":: building U-Boot (${DEFCONFIG})"
 make -C u-boot "$DEFCONFIG"
+
+# mkeficapsule is a host tool for EFI capsule updates. It pulls in GnuTLS
+# headers we do not have and this board has no use for it, so switch it off
+# rather than adding a build dependency for something we never run.
+(cd u-boot && ./scripts/config --disable TOOLS_MKEFICAPSULE && make olddefconfig >/dev/null)
+
 make -C u-boot BL31="$BL31" -j"$(nproc)"
 
 cp "${WORK}/u-boot/u-boot-sunxi-with-spl.bin" "${OUT}/"
