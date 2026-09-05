@@ -73,3 +73,30 @@ Fallbacks if you ever need real networking:
    works before USB gadget networking comes up.
 3. **The gadget link is the dev loop.** Getting `usb_f_ecm` up early pays for
    itself immediately.
+
+## Hardware validation, 2026-09-05
+
+The board was booted with the stock Orange Pi OS card. This eliminated every
+hardware variable before our own image was tried.
+
+| Check | Result |
+|---|---|
+| Board boots from microSD | Pass |
+| DRM device created | `card0` present |
+| HDMI connector exposed | `card0-HDMI-A-1` present |
+| Connector status | **connected** |
+| EDID and mode list | present |
+| GPU render node | **absent** — no `renderD128` |
+
+Two conclusions.
+
+**The display hardware works.** Board, HDMI cable, monitor and EDID are all
+good. Any black screen from our image is therefore a software fault in our
+kernel or device tree, not a wiring or panel problem.
+
+**The vendor kernel has no working GPU.** `renderD128` does not exist, which
+matches the known state of the official Orange Pi images: the Mali driver does
+not load. Our image should be *better* than the vendor one here — mainline
+already carries the Mali node and enables it for this board, so we get Panfrost
+that Orange Pi OS does not have. We are adding display support to a kernel that
+already has the GPU; the vendor did the reverse.
