@@ -136,13 +136,25 @@ Armbian actually tests.
 Note the board is registered as `orangepizero2w.csc` — *Community Supported
 Configuration*, Armbian's lowest support tier. It works, but nobody owes you a fix.
 
-### Escape hatch if the patch stack fights you
+### There is no simplefb escape hatch — correcting an earlier claim
 
-U-Boot v2026.07 can initialise HDMI itself and hand the kernel a `simple-framebuffer`.
-That gives you a working `/dev/fb0` with no DRM display driver at all. Render with EGL to
-an offscreen surface and blit to the framebuffer: you lose vsync and zero-copy scanout, but
-you get the entire application running end-to-end. A slow picture beats no picture while
-you sort the kernel out.
+An earlier draft of this plan said U-Boot could initialise HDMI and hand the
+kernel a `simple-framebuffer`. **That is wrong on the H616.** U-Boot's
+`drivers/video/sunxi/` implements DE2 only, contains no H616 references, and our
+build enables no video options. U-Boot cannot light the panel.
+
+The consequence: nothing appears on HDMI until our own kernel driver binds, and
+there is no fallback framebuffer to fall back to.
+
+### Reading a failed boot without a UART adapter
+
+The image now sets `Storage=persistent` in journald, so the log survives a
+reboot. If the board boots but shows nothing, power it off, move the card to a
+PC, and read `var/log/journal/` on the root partition.
+
+This captures everything from the point the root filesystem mounts read-write.
+It does **not** capture a U-Boot failure or a kernel panic before mount — for
+those, only a serial console works.
 
 ## 4. Phase 1 — The Arch image
 
