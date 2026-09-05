@@ -7,6 +7,10 @@ image/kernel/out/
 # Generated sources (tools/embed/embed_shaders.sh regenerates this)
 build/
 
+# Vendor reference material pulled off the Orange Pi OS card. GPL binaries
+# without accompanying source — keep them local, do not redistribute.
+vendor-reference/
+
 # Artifacts
 *.img
 *.img.xz
