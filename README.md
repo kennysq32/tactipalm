@@ -36,7 +36,8 @@ before you write renderer code.
 | Device tree | **Verified.** Display engine, HDMI and connector all enabled |
 | U-Boot | Not built yet |
 | SD image | Not built yet |
-| Boot on hardware | Not tested. No serial adapter yet |
+| Boot on hardware | **U-Boot and kernel boot. HDMI output works.** |
+| Display stack | **Gate 0B passed** — kernel messages render on the panel at 720p |
 
 ## Hardware notes
 

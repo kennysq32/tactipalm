@@ -100,3 +100,26 @@ not load. Our image should be *better* than the vendor one here — mainline
 already carries the Mali node and enables it for this board, so we get Panfrost
 that Orange Pi OS does not have. We are adding display support to a kernel that
 already has the GPU; the vendor did the reverse.
+
+## First boot of our own image, 2026-09-05
+
+The board booted our image and printed a kernel panic **on the HDMI monitor**.
+With no serial adapter and no network, that output could only have reached the
+screen through the display pipeline.
+
+This means the whole chain works: U-Boot loads, the kernel starts, `sun4i-drm`
+binds, fbcon comes up, and the panel shows 1280x720. **Gate 0B is passed.** The
+44 vendored patches and our board enablement patch do what they were meant to.
+
+The panic itself was unrelated to display:
+
+```
+VFS: Unable to mount root fs on unknown-block(0,0)
+```
+
+Cause: the kernel command line used `root=LABEL=TACTIPALM`. The kernel's own
+device resolver handles `/dev/xxx`, `MAJ:MIN` and `PARTUUID=`, but a filesystem
+label is resolved by udev or blkid inside an initramfs, and we boot without one.
+The root filesystem was present and healthy the whole time; the kernel simply
+had no way to find it. Fixed by switching to `root=PARTUUID=`, which
+`build-image.sh` now substitutes after partitioning.
