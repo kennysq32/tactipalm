@@ -22,6 +22,24 @@ MNT="${WORK}/mnt"
 
 [ "$(id -u)" -eq 0 ] || { echo "run me with sudo"; exit 1; }
 
+# Preflight. Check every external tool before doing any work — this script
+# downloads ~800 MB and allocates a 3 GB file, and discovering a missing
+# command after that is a waste of your time.
+missing=""
+for t in parted mkfs.ext4 losetup bsdtar curl dd; do
+  command -v "$t" >/dev/null || missing="${missing} ${t}"
+done
+if [ -n "$missing" ]; then
+  echo "missing tools:${missing}"
+  echo
+  echo "On Debian/Kali:"
+  echo "  sudo apt install parted e2fsprogs libarchive-tools curl coreutils"
+  echo
+  echo "(bsdtar comes from libarchive-tools. GNU tar is not a substitute here:"
+  echo " ALARM rootfs tarballs carry ownership and xattrs that GNU tar mangles.)"
+  exit 1
+fi
+
 UBOOT="${OUT}/u-boot-sunxi-with-spl.bin"
 KIMAGE="${HERE}/kernel/out/Image"
 KDTB="${HERE}/kernel/out/sun50i-h618-orangepi-zero2w.dtb"
