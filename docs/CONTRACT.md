@@ -105,13 +105,17 @@ Until those land, treat the numbers in `PLAN.md` as estimates.
 
 | Component | State |
 |---|---|
-| Mali GPU / Panfrost | **Mainline.** DT node upstream and enabled for this board |
-| DE33 / HDMI display | **Out-of-tree.** Vendored in `image/kernel/`, 44 patches, verified to apply. Not yet booted |
-| Arch image build | In progress |
-| Networking | USB gadget ethernet over USB-C — see `docs/OS-COMPATIBILITY.md` |
+| Mali GPU / Panfrost | **Working on hardware.** `panfrost 1.4.0`, `mali-g31 id 0x7093`, DRM minor 1 |
+| DE33 / HDMI display | **Working on hardware.** `sun4i-drm 1.0.0` on minor 0, console at 1280x720 |
+| Arch image build | Done. Boots to a login prompt |
+| Networking | USB gadget `usb0` is up on the board; host link not yet established |
 
-**Until HDMI is proven on real hardware, `/dev/dri/card0` is a promise, not a
-fact.** `/dev/dri/renderD128` is much closer to certain, since it needs nothing
-out-of-tree. If you want an on-device milestone before display works, an
-offscreen render to a `renderD128` render node + `glReadPixels` to a PNG will
-run headless today.
+`/dev/dri/card0` is `sun4i-drm` (display). `/dev/dri/card1` plus its render node
+is `panfrost`. Both promises in section 1 are now facts, not plans.
+
+**Both are now proven on hardware** (2026-09-05). See
+`docs/evidence/first-boot-2026-09-05.log` for the driver bind sequence.
+
+Still unmeasured: the real GL extension string, the connector mode list, and a
+`glmark2-es2` score. Those need userspace tools that are not yet installed on
+the board. Treat the performance numbers in `PLAN.md` as estimates until then.

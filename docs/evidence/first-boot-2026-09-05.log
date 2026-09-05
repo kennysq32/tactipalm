@@ -1,0 +1,31 @@
+kernel: sun4i-drm display-engine: bound 1280000.mixer (ops sun8i_mixer_ops)
+kernel: sun4i-drm display-engine: bound 12a0000.mixer (ops sun8i_mixer_ops)
+kernel: sun4i-drm display-engine: bound 6510000.tcon-top (ops sun8i_tcon_top_ops)
+kernel: sun4i-drm display-engine: bound 6515000.lcd-controller (ops sun4i_tcon_ops)
+kernel: sun8i-dw-hdmi 6000000.hdmi: Detected HDMI TX controller v2.12a with HDCP (DWC HDMI 2.0 TX PHY)
+kernel: sun8i-dw-hdmi 6000000.hdmi: registered DesignWare HDMI I2C bus driver
+kernel: sun4i-drm display-engine: bound 6000000.hdmi (ops sun8i_dw_hdmi_ops)
+kernel: [drm] Initialized sun4i-drm 1.0.0 for display-engine on minor 0
+kernel: Console: switching to colour frame buffer device 160x45
+kernel: sun4i-drm display-engine: [drm] fb0: sun4i-drmdrmfb frame buffer device
+kernel: g_ether gadget.0: HOST MAC 62:c6:4b:66:2b:b3
+kernel: g_ether gadget.0: MAC 4a:80:cb:ed:13:86
+kernel: g_ether gadget.0: Ethernet Gadget, version: Memorial Day 2008
+kernel: g_ether gadget.0: g_ether ready
+systemd-modules-load[123]: Inserted module 'g_ether'
+systemd-networkd[186]: usb0: Found matching .network file, based on potentially unpredictable interface name: /etc/systemd/network/10-usb0.network
+systemd-networkd[186]: usb0: Configuring with /etc/systemd/network/10-usb0.network.
+systemd-networkd[186]: usb0: Link UP
+kernel: panfrost 1800000.gpu: clock rate = 432000000
+kernel: panfrost 1800000.gpu: bus_clock rate = 200000000
+kernel: panfrost 1800000.gpu: mali-g31 id 0x7093 major 0x0 minor 0x0 status 0x0
+kernel: panfrost 1800000.gpu: features: 00000000,000027f7, issues: 00000000,00000400
+kernel: panfrost 1800000.gpu: Features: L2:0x07100206 Shader:0x00000000 Tiler:0x00000209 Mem:0x1 MMU:0x00002821 AS:0xff JS:0x7
+kernel: panfrost 1800000.gpu: shader_present=0x1 l2_present=0x1
+kernel: [drm] Initialized panfrost 1.4.0 for 1800000.gpu on minor 1
+kernel: g_ether gadget.0: HOST MAC b2:43:dd:cb:c2:2b
+kernel: g_ether gadget.0: MAC aa:7f:e0:fd:c3:a4
+systemd-modules-load[122]: Inserted module 'g_ether'
+systemd-networkd[178]: usb0: Found matching .network file, based on potentially unpredictable interface name: /etc/systemd/network/10-usb0.network
+systemd-networkd[178]: usb0: Configuring with /etc/systemd/network/10-usb0.network.
+systemd-networkd[178]: usb0: Link UP

@@ -36,8 +36,10 @@ before you write renderer code.
 | Device tree | **Verified.** Display engine, HDMI and connector all enabled |
 | U-Boot | Not built yet |
 | SD image | Not built yet |
-| Boot on hardware | **U-Boot and kernel boot. HDMI output works.** |
-| Display stack | **Gate 0B passed** — kernel messages render on the panel at 720p |
+| Boot on hardware | **Boots to a login prompt.** Reaches multi-user target |
+| Display — Gate 0B | **PASSED.** `sun4i-drm` binds both mixers, TCON-TOP, LCD controller and HDMI. Console at 160x45 = 1280x720 |
+| GPU — Gate 0A | **PASSED.** `panfrost 1.4.0`, `mali-g31 id 0x7093`, on minor 1 |
+| USB gadget | Board side works: `usb0` Link UP. Host side not yet connected |
 
 ## Hardware notes
 
